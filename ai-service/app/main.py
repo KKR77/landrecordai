@@ -27,6 +27,8 @@ from .ner import extract_entities
 from .routing import route_document, route_document_v3
 from .forensic import run_forensic_analysis
 from .fraud_rules import run_fraud_checks
+from .notifications import send_notification, send_high_tamper_alert, NotificationPayload
+from .dilrmp_sync import sync_to_dilrmp, transform_record_to_dilrmp, is_record_eligible_for_sync
 import asyncio
 
 # Configure logging
@@ -435,6 +437,190 @@ async def forensic_endpoint(request: ForensicRequest):
             success=False,
             error=str(e),
             processing_time_ms=processing_time_ms
+        )
+
+
+# ============================================================================
+# Notification Endpoints (Phase 5)
+# ============================================================================
+
+class SendNotificationRequest(BaseModel):
+    """Request model for sending notification"""
+    channel: str  # 'sms' or 'whatsapp'
+    contact: str
+    record_id: str
+    event_type: str
+    message: str
+    metadata: Optional[Dict[str, Any]] = None
+    correlation_id: Optional[str] = None
+
+class SendNotificationResponse(BaseModel):
+    """Response model for notification send"""
+    success: bool
+    error: Optional[str] = None
+    correlation_id: str
+
+@app.post("/send-notification", response_model=SendNotificationResponse)
+async def send_notification_endpoint(request: SendNotificationRequest):
+    """
+    Send notification via specified channel
+    
+    Fire-and-forget with retry logic.
+    Never blocks the main save path.
+    
+    Args:
+        request: SendNotificationRequest
+        
+    Returns:
+        SendNotificationResponse with success status
+    """
+    correlation_id = request.correlation_id or str(uuid.uuid4())
+    
+    try:
+        logger.info(f"[{correlation_id}] Sending {request.channel} notification to {request.contact}")
+        
+        payload = NotificationPayload(
+            record_id=request.record_id,
+            event_type=request.event_type,
+            message=request.message,
+            metadata=request.metadata
+        )
+        
+        success, error = await send_notification(request.channel, request.contact, payload)
+        
+        return SendNotificationResponse(
+            success=success,
+            error=error,
+            correlation_id=correlation_id
+        )
+        
+    except Exception as e:
+        logger.error(f"[{correlation_id}] Notification send failed: {str(e)}", exc_info=True)
+        return SendNotificationResponse(
+            success=False,
+            error=str(e),
+            correlation_id=correlation_id
+        )
+
+
+class HighTamperAlertRequest(BaseModel):
+    """Request model for high-tamper alert"""
+    record_id: str
+    owner_contact: str
+    admin_contacts: List[str]
+    tamper_score: float
+    correlation_id: Optional[str] = None
+
+class HighTamperAlertResponse(BaseModel):
+    """Response model for high-tamper alert"""
+    success: bool
+    results: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    correlation_id: str
+
+@app.post("/send-high-tamper-alert", response_model=HighTamperAlertResponse)
+async def send_high_tamper_alert_endpoint(request: HighTamperAlertRequest):
+    """
+    Send high-tamper alert to owner AND all admins
+    
+    Phase 3 quarantine flow: fires alerts to multiple recipients.
+    
+    Args:
+        request: HighTamperAlertRequest
+        
+    Returns:
+        HighTamperAlertResponse with results for each recipient
+    """
+    correlation_id = request.correlation_id or str(uuid.uuid4())
+    
+    try:
+        logger.info(f"[{correlation_id}] Sending high-tamper alert for record {request.record_id}")
+        
+        results = await send_high_tamper_alert(
+            record_id=request.record_id,
+            owner_contact=request.owner_contact,
+            admin_contacts=request.admin_contacts,
+            tamper_score=request.tamper_score
+        )
+        
+        return HighTamperAlertResponse(
+            success=True,
+            results=results,
+            correlation_id=correlation_id
+        )
+        
+    except Exception as e:
+        logger.error(f"[{correlation_id}] High-tamper alert failed: {str(e)}", exc_info=True)
+        return HighTamperAlertResponse(
+            success=False,
+            error=str(e),
+            correlation_id=correlation_id
+        )
+
+
+# ============================================================================
+# DILRMP Sync Endpoints (Phase 5)
+# ============================================================================
+
+class SyncToDilrmpRequest(BaseModel):
+    """Request model for DILRMP sync"""
+    record: Dict[str, Any]
+    sync_log_id: Optional[str] = None
+    correlation_id: Optional[str] = None
+
+class SyncToDilrmpResponse(BaseModel):
+    """Response model for DILRMP sync"""
+    success: bool
+    dilrmp_response: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    correlation_id: str
+
+@app.post("/sync-to-dilrmp", response_model=SyncToDilrmpResponse)
+async def sync_to_dilrmp_endpoint(request: SyncToDilrmpRequest):
+    """
+    Sync record to DILRMP system
+    
+    ⚠️  STUB: Calls mock endpoint for development.
+        Replace with real DILRMP endpoint for production.
+    
+    Fire-and-forget with retry logic.
+    Never blocks the main save path.
+    
+    Args:
+        request: SyncToDilrmpRequest
+        
+    Returns:
+        SyncToDilrmpResponse with sync result
+    """
+    correlation_id = request.correlation_id or str(uuid.uuid4())
+    
+    try:
+        logger.info(f"[{correlation_id}] Syncing record {request.record.get('id')} to DILRMP")
+        
+        # Check eligibility
+        if not is_record_eligible_for_sync(request.record):
+            return SyncToDilrmpResponse(
+                success=False,
+                error="Record not eligible for sync (status != approved)",
+                correlation_id=correlation_id
+            )
+        
+        # Transform and sync
+        success, response_data, error = await sync_to_dilrmp(request.record)
+        
+        return SyncToDilrmpResponse(
+            success=success,
+            dilrmp_response=response_data,
+            error=error,
+            correlation_id=correlation_id
+        )
+        
+    except Exception as e:
+        logger.error(f"[{correlation_id}] DILRMP sync failed: {str(e)}", exc_info=True)
+        return SyncToDilrmpResponse(
+            success=False,
+            error=str(e),
+            correlation_id=correlation_id
         )
 
 

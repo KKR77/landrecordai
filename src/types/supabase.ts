@@ -39,7 +39,7 @@ export type FraudSeverity = 'low' | 'medium' | 'high' | 'critical'
 
 export type NotificationChannel = 'sms' | 'whatsapp' | 'email' | 'push'
 
-export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'failed'
+export type NotificationStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'retrying' | 'failed_permanent'
 
 export type SyncTarget = 'dilrmp' | 'revenue_dept' | 'court_system' | 'backup'
 
@@ -256,6 +256,8 @@ export interface Database {
           channel: NotificationChannel
           payload: Json
           status: NotificationStatus
+          retry_count: number
+          next_retry_at: string | null
           sent_at: string | null
           delivered_at: string | null
           error_message: string | null
