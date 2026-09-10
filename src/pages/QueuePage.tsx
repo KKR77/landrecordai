@@ -24,7 +24,11 @@ import {
 
 type QueueItem = Upload
 
-export default function QueuePage() {
+interface QueuePageProps {
+  onReviewUpload?: (uploadId: string) => void
+}
+
+export default function QueuePage({ onReviewUpload }: QueuePageProps) {
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -194,8 +198,10 @@ export default function QueuePage() {
       // Reload queue
       await loadQueue()
       
-      // Navigate to review page
-      window.location.href = `/review/${uploadId}`
+      // Navigate to review page via callback
+      if (onReviewUpload) {
+        onReviewUpload(uploadId)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to claim record')
     }

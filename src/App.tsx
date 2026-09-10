@@ -10,6 +10,12 @@ type Tab = 'overview' | 'schema' | 'rls' | 'roles' | 'tests' | 'upload' | 'queue
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [selectedUploadId, setSelectedUploadId] = useState<string | null>(null)
+
+  const handleReviewUpload = (uploadId: string) => {
+    setSelectedUploadId(uploadId)
+    setActiveTab('review')
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -74,8 +80,8 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'upload' && <UploadPage />}
-        {activeTab === 'queue' && <QueuePage />}
-        {activeTab === 'review' && <ReviewPage />}
+        {activeTab === 'queue' && <QueuePage onReviewUpload={handleReviewUpload} />}
+        {activeTab === 'review' && selectedUploadId && <ReviewPage uploadId={selectedUploadId} onBack={() => setActiveTab('queue')} />}
         {activeTab === 'analytics' && <AnalyticsDashboard />}
         {activeTab === 'assistant' && <AIRecordAssistant />}
         {activeTab === 'schema' && <SchemaTab />}

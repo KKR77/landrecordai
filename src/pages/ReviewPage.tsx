@@ -30,8 +30,12 @@ interface ReviewData {
   profile: Profile
 }
 
-export default function ReviewPage() {
-  const [uploadId] = useState<string | null>(null)
+interface ReviewPageProps {
+  uploadId: string
+  onBack?: () => void
+}
+
+export default function ReviewPage({ uploadId, onBack }: ReviewPageProps) {
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -240,7 +244,9 @@ export default function ReviewPage() {
         })
       }
 
-      window.location.href = '/'
+      if (onBack) {
+        onBack()
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit review')
     } finally {
@@ -316,7 +322,7 @@ export default function ReviewPage() {
           <h2 className="text-lg font-semibold text-red-900 mb-2">Error</h2>
           <p className="text-sm text-red-700">{error || 'Failed to load review data'}</p>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => onBack && onBack()}
             className="mt-4 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
           >
             Back to Queue
@@ -342,7 +348,7 @@ export default function ReviewPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={() => onBack && onBack()}
           className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
