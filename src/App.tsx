@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload } from 'lucide-react'
+import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload, ListChecks } from 'lucide-react'
 import UploadPage from './pages/UploadPage'
+import QueuePage from './pages/QueuePage'
+import ReviewPage from './pages/ReviewPage'
 
-type Tab = 'overview' | 'schema' | 'rls' | 'roles' | 'tests' | 'upload'
+type Tab = 'overview' | 'schema' | 'rls' | 'roles' | 'tests' | 'upload' | 'queue' | 'review'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -19,12 +21,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Land Record Digitisation Platform</h1>
-                <p className="text-xs text-slate-500">PS 26018 — Phase 1: Foundation</p>
+                <p className="text-xs text-slate-500">PS 26018 — Phase 4: Admin Queue</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                Phase 2 Complete
+                Phase 4 Complete
               </span>
             </div>
           </div>
@@ -38,6 +40,7 @@ export default function App() {
             {[
               { id: 'overview', label: 'Overview', icon: FileText },
               { id: 'upload', label: 'Upload', icon: Upload },
+              { id: 'queue', label: 'Admin Queue', icon: ListChecks },
               { id: 'schema', label: 'Database Schema', icon: Database },
               { id: 'rls', label: 'RLS Policies', icon: Shield },
               { id: 'roles', label: 'Role Model', icon: Users },
@@ -67,6 +70,8 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {activeTab === 'overview' && <OverviewTab />}
         {activeTab === 'upload' && <UploadPage />}
+        {activeTab === 'queue' && <QueuePage />}
+        {activeTab === 'review' && <ReviewPage />}
         {activeTab === 'schema' && <SchemaTab />}
         {activeTab === 'rls' && <RLSTab />}
         {activeTab === 'roles' && <RolesTab />}
@@ -80,19 +85,23 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Phase 1 & 2 Deliverables</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Phase 1-4 Deliverables</h2>
         <div className="space-y-3">
           {[
-            { title: 'Database Migrations', desc: '8 versioned SQL migration files with all tables, indexes, and constraints', status: 'complete' },
+            { title: 'Database Migrations', desc: '12 versioned SQL migration files with all tables, indexes, and constraints', status: 'complete' },
             { title: 'RLS Policies', desc: 'Comprehensive row-level security policies for all 7 tables', status: 'complete' },
             { title: 'TypeScript Types', desc: 'Generated from database schema - single source of truth', status: 'complete' },
             { title: 'Zod Validation', desc: 'Form validation schemas matching database shape exactly', status: 'complete' },
             { title: 'Environment Validation', desc: 'Startup checks that fail loudly on missing variables', status: 'complete' },
             { title: 'RLS Test Suite', desc: 'Test queries for each role and policy', status: 'complete' },
             { title: 'AI Service (FastAPI)', desc: 'Standalone Python microservice with preprocessing, OCR, NER, and routing', status: 'complete' },
-            { title: 'Pipeline Tests', desc: 'Pytest suite for each pipeline stage with clean and degraded images', status: 'complete' },
+            { title: 'Forensic Analysis', desc: '5 forensic sub-checks: ELA, PRNU, Font/Baseline, FFT, Metadata diff', status: 'complete' },
+            { title: 'Fraud Rule Engine', desc: '3 fraud rules: area consistency, spatial overlap, duplicate detection', status: 'complete' },
+            { title: 'Pipeline Tests', desc: '47+ pytest tests covering all pipeline stages', status: 'complete' },
             { title: 'Supabase Edge Function', desc: 'Webhook-triggered function that orchestrates the full pipeline', status: 'complete' },
             { title: 'Upload Page', desc: 'Frontend with Realtime subscription for live status updates', status: 'complete' },
+            { title: 'Admin Queue', desc: 'Verification queue with claim-lock, filters, and realtime updates', status: 'complete' },
+            { title: 'Review Page', desc: 'Side-by-side review with inline editing and forensic sign-off', status: 'complete' },
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
               <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />

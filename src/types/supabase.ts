@@ -177,6 +177,8 @@ export interface Database {
           device_fingerprint: string | null
           file_size: number | null
           mime_type: string | null
+          claimed_by: string | null
+          claimed_at: string | null
           created_at: string
           updated_at: string
         }
