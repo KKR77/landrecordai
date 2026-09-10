@@ -77,7 +77,8 @@ export default function QueuePage({ onReviewUpload }: QueuePageProps) {
   useEffect(() => {
     if (currentProfile) {
       loadQueue()
-      subscribeToQueue()
+      const cleanup = subscribeToQueue()
+      return cleanup
     }
   }, [currentProfile, statusFilter, tagFilter, villageFilter])
 
@@ -175,7 +176,12 @@ export default function QueuePage({ onReviewUpload }: QueuePageProps) {
           loadQueue()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[QueuePage] Realtime subscription error')
+          // Could add retry logic or user notification here
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)

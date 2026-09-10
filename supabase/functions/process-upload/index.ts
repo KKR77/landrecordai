@@ -174,6 +174,7 @@ serve(async (req) => {
 
     // Run fraud rule checks (if we have extracted data)
     let fraudAlerts: any[] = [];
+    let fraudAlertIds: string[] = [];
     
     if (pipelineResult.extracted_data && pipelineResult.decision !== "failed") {
       console.log(`[${correlationId}] Running fraud rule checks`);
@@ -197,18 +198,26 @@ serve(async (req) => {
         });
       }
       
-      // Write fraud alerts to database
+      // Write fraud alerts to database and store their IDs
       for (const alert of fraudAlerts) {
-        await supabase.from("fraud_alerts").insert({
-          record_id: null, // Will be linked after record creation
-          type: alert.type,
-          severity: alert.severity,
-          details: alert.details,
-          resolved: false,
-        });
+        const { data: insertedAlert, error: insertError } = await supabase
+          .from("fraud_alerts")
+          .insert({
+            record_id: null, // Will be linked after record creation
+            type: alert.type,
+            severity: alert.severity,
+            details: alert.details,
+            resolved: false,
+          })
+          .select('id')
+          .single();
+        
+        if (insertedAlert && !insertError) {
+          fraudAlertIds.push(insertedAlert.id);
+        }
       }
       
-      console.log(`[${correlationId}] Fraud checks completed: ${fraudAlerts.length} alert(s)`);
+      console.log(`[${correlationId}] Fraud checks completed: ${fraudAlerts.length} alert(s), stored ${fraudAlertIds.length} IDs`);
     }
 
     // Apply Phase 3 routing decision
@@ -288,13 +297,14 @@ serve(async (req) => {
         created_by: upload.uploader_id,
       });
 
-      // Link fraud alerts to record
-      for (const alert of fraudAlerts) {
+      // Link fraud alerts to record using stored IDs
+      if (fraudAlertIds.length > 0) {
         await supabase
           .from("fraud_alerts")
           .update({ record_id: record.id })
-          .is('record_id', null)
-          .eq('type', alert.type);
+          .in('id', fraudAlertIds);
+        
+        console.log(`[${correlationId}] Linked ${fraudAlertIds.length} fraud alerts to record ${record.id}`);
       }
 
       console.log(`[${correlationId}] Record created: ${record.id}`);

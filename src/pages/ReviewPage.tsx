@@ -7,7 +7,7 @@
  * Quarantine requires explicit forensic sign-off
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase, isSupabaseConfigured } from '../lib/supabase/client'
 import type { Upload, Profile } from '../types/supabase'
 import { format } from 'date-fns'
@@ -72,13 +72,7 @@ export default function ReviewPage({ uploadId, onBack }: ReviewPageProps) {
     )
   }
 
-  useEffect(() => {
-    if (uploadId) {
-      loadReviewData()
-    }
-  }, [uploadId])
-
-  const loadReviewData = async () => {
+  const loadReviewData = useCallback(async () => {
     if (!uploadId) {
       setError('No upload ID provided')
       setLoading(false)
@@ -154,7 +148,13 @@ export default function ReviewPage({ uploadId, onBack }: ReviewPageProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [uploadId])
+
+  useEffect(() => {
+    if (uploadId) {
+      loadReviewData()
+    }
+  }, [uploadId, loadReviewData])
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedFields(prev => ({ ...prev, [field]: value }))

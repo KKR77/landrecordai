@@ -19,6 +19,7 @@ from typing import Optional, Dict, Any, List
 import logging
 import time
 import uuid
+import os
 from datetime import datetime
 
 from .preprocess import preprocess_image
@@ -46,12 +47,17 @@ app = FastAPI(
 )
 
 # CORS middleware
+# In production, restrict to specific domains
+# For development, allow localhost
+import os
+allowed_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict to your domain
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -185,11 +191,30 @@ async def preprocess_endpoint(request: PreprocessRequest):
         if request.image_base64:
             image_data = request.image_base64
         elif request.storage_path:
-            # TODO: Fetch from Supabase Storage
-            raise HTTPException(
-                status_code=501,
-                detail="Storage path fetching not yet implemented"
-            )
+            # Fetch from Supabase Storage
+            try:
+                from supabase import create_client
+                supabase_url = os.getenv("SUPABASE_URL")
+                supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+                
+                if not supabase_url or not supabase_key:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Supabase credentials not configured"
+                    )
+                
+                supabase_client = create_client(supabase_url, supabase_key)
+                file_data = supabase_client.storage.from_('document-scans').download(request.storage_path)
+                
+                # Convert to base64
+                import base64
+                image_data = f"data:image/png;base64,{base64.b64encode(file_data).decode('utf-8')}"
+            except Exception as e:
+                logger.error(f"Failed to fetch from storage: {str(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to fetch image from storage: {str(e)}"
+                )
         else:
             raise HTTPException(
                 status_code=400,

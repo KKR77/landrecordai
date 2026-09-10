@@ -59,20 +59,27 @@ CREATE TRIGGER prevent_record_versions_delete_trigger
 -- Fix #3: Add quarantine enforcement trigger
 -- ============================================================================
 
--- Function to check quarantine status
+-- Function to check quarantine status BEFORE record creation
+-- This checks if the uploader has any quarantined uploads
 CREATE OR REPLACE FUNCTION public.check_quarantine_status()
 RETURNS TRIGGER AS $$
 DECLARE
   v_upload_tamper_score NUMERIC;
+  v_uploader_has_quarantine BOOLEAN;
 BEGIN
-  -- Check if there's an associated upload with high tamper score
-  SELECT tamper_score INTO v_upload_tamper_score
-  FROM public.uploads
-  WHERE record_id = NEW.id;
+  -- Check if the uploader (created_by) has any quarantined uploads
+  -- This is checked BEFORE the record is created
+  SELECT EXISTS (
+    SELECT 1 
+    FROM public.uploads 
+    WHERE uploader_id = NEW.created_by 
+    AND status = 'quarantine'
+    AND tamper_score > 0.70
+  ) INTO v_uploader_has_quarantine;
   
-  -- If tamper score > 0.70, block the insert
-  IF v_upload_tamper_score IS NOT NULL AND v_upload_tamper_score > 0.70 THEN
-    RAISE EXCEPTION 'Cannot create record: associated upload is quarantined (tamper_score = %)', v_upload_tamper_score;
+  -- If uploader has quarantined uploads, block the insert
+  IF v_uploader_has_quarantine THEN
+    RAISE EXCEPTION 'Cannot create record: uploader has quarantined uploads with high tamper score';
   END IF;
   
   RETURN NEW;
