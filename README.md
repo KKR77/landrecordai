@@ -1,8 +1,8 @@
-# Land Record Digitisation Platform - Phase 1 Foundation
+# Land Record Digitisation Platform
 
 **Project:** PS 26018  
-**Phase:** 1 of 7 — Foundation  
-**Status:** Complete
+**Phase:** 1-2 of 7 — Foundation + Core OCR Pipeline  
+**Status:** Phase 2 Complete
 
 ## Overview
 
@@ -276,13 +276,85 @@ SELECT * FROM public.records WHERE tehsil = 'Tehsil-B';
 └── README.md                 # This file
 ```
 
-## Next Steps (Phase 2+)
+## Phase 2: Core OCR Pipeline
 
-- [ ] FastAPI AI/CV microservice for OCR and fraud detection
-- [ ] OpenCV + Tesseract integration
-- [ ] HuggingFace NER for entity extraction
+### AI Service (FastAPI)
+
+Standalone Python microservice at `ai-service/`:
+
+**Endpoints:**
+- `GET /health` - Health check
+- `POST /preprocess` - Image preprocessing (deskew, denoise, CLAHE, threshold)
+- `POST /ocr-extract` - Tesseract OCR with Hindi + English
+- `POST /ner-extract` - Named entity recognition (regex-based)
+- `POST /route` - Routing decision (auto_save vs admin_queue)
+- `POST /pipeline` - Full pipeline orchestration
+
+**Pipeline Stages:**
+1. **Preprocessing**: Deskew → Denoise → CLAHE → Adaptive Threshold → Readability Check
+2. **OCR**: Tesseract with Hindi + English language packs
+3. **NER**: Regex-based field extraction (owner_name, khasra_no, khata_no, etc.)
+4. **Routing**: Auto-save if all fields ≥90% confidence, else admin queue
+
+**Testing:**
+- pytest suite for each stage
+- Clean and degraded image tests
+- Coverage reporting
+
+**Run locally:**
+```bash
+cd ai-service
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+**Docker:**
+```bash
+docker-compose up --build
+```
+
+### Supabase Edge Function
+
+`supabase/functions/process-upload/index.ts`:
+- Triggered by webhook on uploads INSERT
+- Downloads image from Storage
+- Calls AI service pipeline
+- Routes to auto_save or admin_queue
+- Logs all stages with correlation_id
+
+### Frontend Upload Page
+
+`src/pages/UploadPage.tsx`:
+- File picker for Patwari/Tehsildar
+- Uploads to Supabase Storage
+- Creates uploads row
+- Realtime subscription for live status
+- Shows: processing → auto-saved/admin_queue/failed
+
+### What's Real vs Stubbed
+
+**Real (Phase 2):**
+- ✅ Image preprocessing (OpenCV)
+- ✅ OCR extraction (Tesseract)
+- ✅ Regex-based NER
+- ✅ Routing logic
+- ✅ Full pipeline orchestration
+- ✅ Error handling at every stage
+- ✅ Correlation IDs for tracing
+
+**Stubbed (Phase 3+):**
+- ⚠️ NER is regex-based (no fine-tuned model yet)
+- ⚠️ Tamper detection (forensic analysis)
+- ⚠️ Fraud rules engine
+
+## Next Steps (Phase 3+)
+
 - [ ] Forensic analysis (ELA, PRNU, FFT)
-- [ ] Real-time admin queue with Supabase Realtime
+- [ ] Tamper detection
+- [ ] Fraud rules engine
+- [ ] Fine-tuned NER model (if needed)
+- [ ] GPU acceleration
+- [ ] Real-time admin queue UI
 - [ ] SMS/WhatsApp notification delivery
 - [ ] DILRMP webhook integration
 
