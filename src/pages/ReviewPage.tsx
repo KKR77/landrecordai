@@ -117,14 +117,14 @@ export default function ReviewPage({ uploadId, onBack }: ReviewPageProps) {
 
       // Claim it if not already claimed
       if (!upload.claimed_by) {
-        await (supabase.from('uploads') as any).update({
+        await supabase.from('uploads').update({
           claimed_by: user.id,
           claimed_at: new Date().toISOString(),
-        }).eq('id', id)
+        } as any).eq('id', id)
       }
 
       // Get extracted data from ocr_confidence
-      const extracted = (upload.ocr_confidence as any) || {}
+      const extracted = (upload.ocr_confidence as Record<string, any>) || {}
 
       // Get fraud alerts
       const { data: alertsData } = await supabase

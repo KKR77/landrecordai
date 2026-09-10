@@ -22,6 +22,64 @@ export type VersionSource = 'manual' | 'ocr' | 'system' | 'migration'
 
 export type UploadStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'admin_queue' | 'quarantine'
 
+// Additional types for better type safety
+export interface UploadRow {
+  id: string
+  storage_path: string
+  uploader_id: string
+  record_id: string | null
+  status: UploadStatus
+  ocr_confidence: Record<string, number> | null
+  tamper_score: number | null
+  tamper_details: Record<string, any> | null
+  checksum: string
+  device_fingerprint: string | null
+  claimed_by: string | null
+  claimed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProfileRow {
+  id: string
+  role: UserRole
+  tehsil_scope: string | null
+  name: string
+  phone: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RecordRow {
+  id: string
+  khasra_no: string
+  khata_no: string
+  owner_name: string
+  village: string
+  tehsil: string
+  district: string
+  area_declared: number | null
+  land_class: string | null
+  geom: Json | null
+  status: RecordStatus
+  locked_fields: Json
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface FraudAlertRow {
+  id: string
+  record_id: string
+  type: FraudType
+  severity: FraudSeverity
+  details: Json
+  resolved: boolean
+  resolved_by: string | null
+  resolved_at: string | null
+  created_at: string
+}
+
 export type FraudType = 
   | 'tamper_detected'
   | 'duplicate_upload'
