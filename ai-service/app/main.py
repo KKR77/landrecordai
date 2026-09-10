@@ -49,7 +49,6 @@ app = FastAPI(
 # CORS middleware
 # In production, restrict to specific domains
 # For development, allow localhost
-import os
 allowed_origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
 
 app.add_middleware(

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
 import {
   LineChart,
@@ -87,29 +87,7 @@ export default function AnalyticsDashboard() {
     );
   }
 
-  useEffect(() => {
-    loadAnalytics();
-    
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('analytics-updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'uploads' }, () => {
-        loadAnalytics();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'record_versions' }, () => {
-        loadAnalytics();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fraud_alerts' }, () => {
-        loadAnalytics();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const loadAnalytics = async () => {
+  const loadAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -173,7 +151,33 @@ export default function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadAnalytics();
+    
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('analytics-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'uploads' }, () => {
+        loadAnalytics();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'record_versions' }, () => {
+        loadAnalytics();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fraud_alerts' }, () => {
+        loadAnalytics();
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[AnalyticsDashboard] Realtime subscription error');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadAnalytics]);
 
   if (loading) {
     return (

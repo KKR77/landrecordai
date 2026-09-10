@@ -76,7 +76,11 @@ export default function UploadPage() {
           }))
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('[UploadPage] Realtime subscription error')
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
