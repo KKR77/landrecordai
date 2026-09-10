@@ -8,8 +8,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase/client'
+import { supabase, isSupabaseConfigured } from '../lib/supabase/client'
 import type { Upload, Profile } from '../types/supabase'
 import { format } from 'date-fns'
 import { 
@@ -20,7 +19,8 @@ import {
   Shield, 
   Edit3,
   Save,
-  Eye
+  Eye,
+  AlertCircle
 } from 'lucide-react'
 
 interface ReviewData {
@@ -31,8 +31,7 @@ interface ReviewData {
 }
 
 export default function ReviewPage() {
-  const { uploadId } = useParams<{ uploadId: string }>()
-  const navigate = useNavigate()
+  const [uploadId] = useState<string | null>(null)
   
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +39,34 @@ export default function ReviewPage() {
   const [editedFields, setEditedFields] = useState<Record<string, any>>({})
   const [submitting, setSubmitting] = useState(false)
   const [showForensicSignoff, setShowForensicSignoff] = useState(false)
+
+  // Check if Supabase is configured
+  if (!isSupabaseConfigured()) {
+    return (
+      <div className="max-w-2xl mx-auto p-8">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h2 className="text-lg font-semibold text-amber-900 mb-2">
+                Supabase Not Configured
+              </h2>
+              <p className="text-sm text-amber-800 mb-3">
+                The Review Page requires Supabase to be configured. Please set the following environment variables:
+              </p>
+              <ul className="text-sm text-amber-800 space-y-1 mb-3">
+                <li><code className="bg-amber-100 px-2 py-0.5 rounded">VITE_SUPABASE_URL</code></li>
+                <li><code className="bg-amber-100 px-2 py-0.5 rounded">VITE_SUPABASE_ANON_KEY</code></li>
+              </ul>
+              <p className="text-sm text-amber-800">
+                See <code className="bg-amber-100 px-2 py-0.5 rounded">.env.example</code> for reference.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     if (uploadId) {
@@ -213,7 +240,7 @@ export default function ReviewPage() {
         })
       }
 
-      navigate('/queue')
+      window.location.href = '/'
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit review')
     } finally {
@@ -289,7 +316,7 @@ export default function ReviewPage() {
           <h2 className="text-lg font-semibold text-red-900 mb-2">Error</h2>
           <p className="text-sm text-red-700">{error || 'Failed to load review data'}</p>
           <button
-            onClick={() => navigate('/queue')}
+            onClick={() => window.location.href = '/'}
             className="mt-4 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded hover:bg-red-700"
           >
             Back to Queue
@@ -315,7 +342,7 @@ export default function ReviewPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/queue')}
+          onClick={() => window.location.href = '/'}
           className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />

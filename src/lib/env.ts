@@ -1,37 +1,19 @@
 /**
  * Environment Variable Validation
- * Fails loudly on startup if required variables are missing
+ * Gracefully handles missing Supabase credentials for demo environments
  */
 
 export interface EnvConfig {
-  supabaseUrl: string
-  supabaseAnonKey: string
+  supabaseUrl: string | null
+  supabaseAnonKey: string | null
   appName: string
   appEnv: string
   enableMockData: boolean
   enableAnalytics: boolean
+  isSupabaseConfigured: boolean
 }
 
-class MissingEnvVarError extends Error {
-  constructor(varName: string) {
-    super(
-      `Missing required environment variable: ${varName}\n` +
-      `Please check your .env file and ensure all required variables are set.\n` +
-      `See .env.example for reference.`
-    )
-    this.name = 'MissingEnvVarError'
-  }
-}
-
-function getRequiredEnv(key: string): string {
-  const value = import.meta.env[key]
-  if (!value) {
-    throw new MissingEnvVarError(key)
-  }
-  return value
-}
-
-function getOptionalEnv(key: string, defaultValue: string): string {
+function getOptionalEnv(key: string, defaultValue: string = ''): string {
   return import.meta.env[key] || defaultValue
 }
 
@@ -42,36 +24,37 @@ function getBooleanEnv(key: string, defaultValue: boolean): boolean {
 }
 
 export function validateEnv(): EnvConfig {
-  try {
-    const config: EnvConfig = {
-      supabaseUrl: getRequiredEnv('VITE_SUPABASE_URL'),
-      supabaseAnonKey: getRequiredEnv('VITE_SUPABASE_ANON_KEY'),
-      appName: getOptionalEnv('VITE_APP_NAME', 'Land Record Platform'),
-      appEnv: getOptionalEnv('VITE_APP_ENV', 'development'),
-      enableMockData: getBooleanEnv('VITE_ENABLE_MOCK_DATA', true),
-      enableAnalytics: getBooleanEnv('VITE_ENABLE_ANALYTICS', false),
-    }
-
-    // Validate Supabase URL format
-    if (!config.supabaseUrl.startsWith('https://')) {
-      throw new Error('VITE_SUPABASE_URL must start with https://')
-    }
-
-    // Validate Supabase key format (basic check)
-    if (config.supabaseAnonKey.length < 20) {
-      throw new Error('VITE_SUPABASE_ANON_KEY appears to be invalid (too short)')
-    }
-
-    console.log(`✓ Environment validated successfully (${config.appEnv})`)
-    return config
-  } catch (error) {
-    if (error instanceof MissingEnvVarError) {
-      console.error('\n❌ Environment Validation Failed\n')
-      console.error(error.message)
-      console.error('\nThis is a fatal error. The application cannot start.\n')
-    }
-    throw error
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || null
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || null
+  
+  const config: EnvConfig = {
+    supabaseUrl,
+    supabaseAnonKey,
+    appName: getOptionalEnv('VITE_APP_NAME', 'Land Record Platform'),
+    appEnv: getOptionalEnv('VITE_APP_ENV', 'development'),
+    enableMockData: getBooleanEnv('VITE_ENABLE_MOCK_DATA', true),
+    enableAnalytics: getBooleanEnv('VITE_ENABLE_ANALYTICS', false),
+    isSupabaseConfigured: !!(supabaseUrl && supabaseAnonKey),
   }
+
+  // Validate Supabase URL format if provided
+  if (config.supabaseUrl && !config.supabaseUrl.startsWith('https://')) {
+    console.warn('⚠️ VITE_SUPABASE_URL should start with https://')
+  }
+
+  // Validate Supabase key format if provided
+  if (config.supabaseAnonKey && config.supabaseAnonKey.length < 20) {
+    console.warn('⚠️ VITE_SUPABASE_ANON_KEY appears to be invalid (too short)')
+  }
+
+  if (config.isSupabaseConfigured) {
+    console.log(`✓ Environment validated successfully (${config.appEnv})`)
+  } else {
+    console.warn('⚠️ Supabase not configured - running in demo mode with limited functionality')
+    console.warn('  To enable full functionality, set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
+  }
+
+  return config
 }
 
 // Export validated config
