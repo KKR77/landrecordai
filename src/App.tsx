@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload, ListChecks } from 'lucide-react'
+import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload, ListChecks, BarChart3, MessageSquare } from 'lucide-react'
 import UploadPage from './pages/UploadPage'
 import QueuePage from './pages/QueuePage'
 import ReviewPage from './pages/ReviewPage'
+import AnalyticsDashboard from './pages/AnalyticsDashboard'
+import AIRecordAssistant from './pages/AIRecordAssistant'
 
-type Tab = 'overview' | 'schema' | 'rls' | 'roles' | 'tests' | 'upload' | 'queue' | 'review'
+type Tab = 'overview' | 'schema' | 'rls' | 'roles' | 'tests' | 'upload' | 'queue' | 'review' | 'analytics' | 'assistant'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
@@ -21,12 +23,12 @@ export default function App() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Land Record Digitisation Platform</h1>
-                <p className="text-xs text-slate-500">PS 26018 — Phase 4: Admin Queue</p>
+                <p className="text-xs text-slate-500">PS 26018 — Phase 6: Analytics & AI Assistant</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
-                Phase 4 Complete
+                Phase 6 Complete
               </span>
             </div>
           </div>
@@ -41,6 +43,8 @@ export default function App() {
               { id: 'overview', label: 'Overview', icon: FileText },
               { id: 'upload', label: 'Upload', icon: Upload },
               { id: 'queue', label: 'Admin Queue', icon: ListChecks },
+              { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+              { id: 'assistant', label: 'AI Assistant', icon: MessageSquare },
               { id: 'schema', label: 'Database Schema', icon: Database },
               { id: 'rls', label: 'RLS Policies', icon: Shield },
               { id: 'roles', label: 'Role Model', icon: Users },
@@ -72,6 +76,8 @@ export default function App() {
         {activeTab === 'upload' && <UploadPage />}
         {activeTab === 'queue' && <QueuePage />}
         {activeTab === 'review' && <ReviewPage />}
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
+        {activeTab === 'assistant' && <AIRecordAssistant />}
         {activeTab === 'schema' && <SchemaTab />}
         {activeTab === 'rls' && <RLSTab />}
         {activeTab === 'roles' && <RolesTab />}
@@ -85,10 +91,10 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Phase 1-4 Deliverables</h2>
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Phase 1-6 Deliverables</h2>
         <div className="space-y-3">
           {[
-            { title: 'Database Migrations', desc: '12 versioned SQL migration files with all tables, indexes, and constraints', status: 'complete' },
+            { title: 'Database Migrations', desc: '15 versioned SQL migration files with all tables, indexes, and constraints', status: 'complete' },
             { title: 'RLS Policies', desc: 'Comprehensive row-level security policies for all 7 tables', status: 'complete' },
             { title: 'TypeScript Types', desc: 'Generated from database schema - single source of truth', status: 'complete' },
             { title: 'Zod Validation', desc: 'Form validation schemas matching database shape exactly', status: 'complete' },
@@ -102,6 +108,10 @@ function OverviewTab() {
             { title: 'Upload Page', desc: 'Frontend with Realtime subscription for live status updates', status: 'complete' },
             { title: 'Admin Queue', desc: 'Verification queue with claim-lock, filters, and realtime updates', status: 'complete' },
             { title: 'Review Page', desc: 'Side-by-side review with inline editing and forensic sign-off', status: 'complete' },
+            { title: 'Notifications', desc: 'SMS/WhatsApp notifications with retry logic and deduplication', status: 'complete' },
+            { title: 'DILRMP Sync', desc: 'External system sync with explicit schema mapping and retry logic', status: 'complete' },
+            { title: 'Analytics Dashboard', desc: 'Real-time charts and metrics with server-side aggregation', status: 'complete' },
+            { title: 'AI Record Assistant', desc: 'Natural language query interface with structured filter parsing', status: 'complete' },
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
               <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
