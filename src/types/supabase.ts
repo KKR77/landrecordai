@@ -20,7 +20,7 @@ export type RecordStatus = 'draft' | 'verified' | 'disputed' | 'archived'
 
 export type VersionSource = 'manual' | 'ocr' | 'system' | 'migration'
 
-export type UploadStatus = 'pending' | 'processing' | 'completed' | 'failed'
+export type UploadStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'admin_queue' | 'quarantine'
 
 export type FraudType = 
   | 'tamper_detected'
@@ -30,6 +30,10 @@ export type FraudType =
   | 'ocr_mismatch'
   | 'metadata_anomaly'
   | 'pattern_anomaly'
+  | 'area_mismatch'
+  | 'spatial_overlap'
+  | 'exact_duplicate'
+  | 'near_duplicate'
 
 export type FraudSeverity = 'low' | 'medium' | 'high' | 'critical'
 
@@ -167,6 +171,8 @@ export interface Database {
           status: UploadStatus
           ocr_confidence: Json | null
           tamper_score: number | null
+          tamper_details: Json | null
+          text_embedding: string | null // vector(384)
           checksum: string
           device_fingerprint: string | null
           file_size: number | null

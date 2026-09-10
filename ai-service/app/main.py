@@ -24,7 +24,10 @@ from datetime import datetime
 from .preprocess import preprocess_image
 from .ocr import extract_text
 from .ner import extract_entities
-from .routing import route_document
+from .routing import route_document, route_document_v3
+from .forensic import run_forensic_analysis
+from .fraud_rules import run_fraud_checks
+import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -111,6 +114,7 @@ class PipelineRequest(BaseModel):
     storage_path: Optional[str] = None
     upload_id: str
     languages: List[str] = Field(default=["hin", "eng"])
+    locked_version_metadata: Optional[Dict[str, Any]] = None
 
 class PipelineResponse(BaseModel):
     """Response model for full pipeline"""
@@ -120,6 +124,9 @@ class PipelineResponse(BaseModel):
     decision: str
     extracted_data: Optional[Dict[str, Any]] = None
     confidence_scores: Optional[Dict[str, float]] = None
+    tamper_score: Optional[float] = None
+    tamper_details: Optional[Dict[str, Any]] = None
+    routing_tags: Optional[List[str]] = None
     stage_timings: Dict[str, int]
     error: Optional[str] = None
 
@@ -359,7 +366,80 @@ async def routing_endpoint(request: RoutingRequest):
 
 
 # ============================================================================
-# Full Pipeline Endpoint
+# Forensic Analysis Endpoint
+# ============================================================================
+
+class ForensicRequest(BaseModel):
+    """Request model for forensic analysis"""
+    original_image_base64: str
+    ocr_bounding_boxes: Optional[List[Dict[str, Any]]] = None
+    locked_version_metadata: Optional[Dict[str, Any]] = None
+
+class ForensicResponse(BaseModel):
+    """Response model for forensic analysis"""
+    success: bool
+    tamper_score: float = 0.0
+    tamper_details: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    processing_time_ms: int
+
+@app.post("/forensic-analyze", response_model=ForensicResponse)
+async def forensic_endpoint(request: ForensicRequest):
+    """
+    Run forensic tamper detection analysis
+    
+    Runs 5 independent sub-checks:
+    1. ELA (Error Level Analysis)
+    2. PRNU (Noise consistency)
+    3. Font/baseline uniformity
+    4. FFT (Generation-loss)
+    5. Metadata diff
+    
+    Combines into single Tamper Risk Score (0-100).
+    
+    Args:
+        request: ForensicRequest with original image and optional context
+        
+    Returns:
+        ForensicResponse with tamper_score and detailed breakdown
+    """
+    start_time = time.time()
+    correlation_id = str(uuid.uuid4())
+    
+    try:
+        logger.info(f"[{correlation_id}] Starting forensic analysis")
+        
+        # Run forensic analysis
+        tamper_score, tamper_details = run_forensic_analysis(
+            original_image_base64=request.original_image_base64,
+            ocr_bounding_boxes=request.ocr_bounding_boxes,
+            locked_version_metadata=request.locked_version_metadata
+        )
+        
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        
+        logger.info(f"[{correlation_id}] Forensic completed in {processing_time_ms}ms, tamper_score={tamper_score:.2f}")
+        
+        return ForensicResponse(
+            success=True,
+            tamper_score=tamper_score,
+            tamper_details=tamper_details,
+            processing_time_ms=processing_time_ms
+        )
+        
+    except Exception as e:
+        processing_time_ms = int((time.time() - start_time) * 1000)
+        logger.error(f"[{correlation_id}] Forensic failed: {str(e)}", exc_info=True)
+        
+        return ForensicResponse(
+            success=False,
+            error=str(e),
+            processing_time_ms=processing_time_ms
+        )
+
+
+# ============================================================================
+# Full Pipeline Endpoint (Phase 3 - Parallel Forensic)
 # ============================================================================
 
 @app.post("/pipeline", response_model=PipelineResponse)
@@ -398,14 +478,31 @@ async def pipeline_endpoint(request: PipelineRequest):
         if not preprocess_resp.processed_image_base64:
             raise Exception("No processed image returned")
         
-        # Stage 2: OCR
-        stage_start = time.time()
+        # Stage 2: OCR + Forensic in PARALLEL
+        # OCR needs preprocessed image, forensic needs original image
+        # Both can run simultaneously
+        logger.info(f"[{correlation_id}] Starting OCR and forensic in parallel")
+        
+        ocr_start = time.time()
+        forensic_start = time.time()
+        
+        # Run OCR
         ocr_req = OCRRequest(
             image_base64=preprocess_resp.processed_image_base64,
             languages=request.languages
         )
         ocr_resp = await ocr_endpoint(ocr_req)
         stage_timings["ocr"] = ocr_resp.processing_time_ms
+        
+        # Run forensic (in parallel concept - in practice sequential in this endpoint
+        # but the Edge Function can call them in parallel)
+        forensic_req = ForensicRequest(
+            original_image_base64=request.image_base64 or "",
+            ocr_bounding_boxes=ocr_resp.bounding_boxes if ocr_resp.success else None,
+            locked_version_metadata=request.locked_version_metadata
+        )
+        forensic_resp = await forensic_endpoint(forensic_req)
+        stage_timings["forensic"] = forensic_resp.processing_time_ms
         
         if not ocr_resp.success:
             raise Exception(f"OCR failed: {ocr_resp.error}")
@@ -428,23 +525,33 @@ async def pipeline_endpoint(request: PipelineRequest):
         if not ner_resp.entities or not ner_resp.confidence_scores:
             raise Exception("No entities extracted from text")
         
-        # Stage 4: Routing
+        # Stage 4: Routing (Phase 3 - includes tamper score)
         stage_start = time.time()
-        routing_req = RoutingRequest(confidence_scores=ner_resp.confidence_scores)
-        routing_resp = await routing_endpoint(routing_req)
+        tamper_score = forensic_resp.tamper_score if forensic_resp.success else 0.0
+        
+        # Use Phase 3 routing with tamper score
+        from .routing import route_document_v3
+        routing_result = route_document_v3(
+            confidence_scores=ner_resp.confidence_scores,
+            tamper_score=tamper_score,
+            fraud_alerts=[]  # Fraud rules run in Edge Function
+        )
         stage_timings["routing"] = int((time.time() - stage_start) * 1000)
         
         total_time_ms = int((time.time() - start_time) * 1000)
         
-        logger.info(f"[{correlation_id}] Pipeline completed in {total_time_ms}ms, decision={routing_resp.decision}")
+        logger.info(f"[{correlation_id}] Pipeline completed in {total_time_ms}ms, decision={routing_result['decision']}")
         
         return PipelineResponse(
             success=True,
             upload_id=request.upload_id,
             correlation_id=correlation_id,
-            decision=routing_resp.decision,
+            decision=routing_result["decision"],
             extracted_data=ner_resp.entities,
             confidence_scores=ner_resp.confidence_scores,
+            tamper_score=tamper_score,
+            tamper_details=forensic_resp.tamper_details if forensic_resp.success else None,
+            routing_tags=routing_result.get("tags", []),
             stage_timings=stage_timings
         )
         
