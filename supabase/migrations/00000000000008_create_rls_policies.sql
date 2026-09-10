@@ -68,12 +68,11 @@ CREATE POLICY "Admins can update any profile"
 -- RECORDS TABLE POLICIES
 -- ============================================================================
 
--- Anonymous users can SELECT masked view (mask owner_name, exclude locked_fields)
-CREATE POLICY "Anon can view masked records"
-  ON public.records FOR SELECT
-  TO anon
-  USING (true)
-  WITH CHECK (false); -- No INSERT/UPDATE/DELETE for anon
+-- SECURITY NOTE: This policy was DROPPED in migration 00000000000016
+-- because USIN (true) granted anon SELECT on the base records table,
+-- allowing unmasked access to owner_name and locked_fields.
+-- Anon users should ONLY access the records_public view (masked).
+-- See migration 00000000000016_phase7_security_fix_anon_records.sql
 
 -- Create a view for anonymous users with masked data
 CREATE OR REPLACE VIEW public.records_public AS

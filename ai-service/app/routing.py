@@ -17,7 +17,7 @@ Author: PS 26018
 Version: 3.0.0
 """
 
-from typing import Tuple, Dict, List, Optional
+from typing import Tuple, Dict, List, Optional, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -233,7 +233,3 @@ def route_document(
     
     # Otherwise, use Phase 2 logic
     return route_by_confidence(confidence_scores)
-
-
-# Type hint for Dict
-from typing import Dict, Any
