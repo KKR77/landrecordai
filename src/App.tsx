@@ -1,5 +1,8 @@
-import { useState } from 'react'
-import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload, ListChecks, BarChart3, MessageSquare } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload, ListChecks, BarChart3, MessageSquare, LogOut } from 'lucide-react'
+import { supabase } from './lib/supabase/client'
+import type { Profile } from './types/supabase'
+import Login from './components/Login'
 import UploadPage from './pages/UploadPage'
 import QueuePage from './pages/QueuePage'
 import ReviewPage from './pages/ReviewPage'
@@ -11,11 +14,114 @@ type Tab = 'overview' | 'schema' | 'rls' | 'roles' | 'tests' | 'upload' | 'queue
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [selectedUploadId, setSelectedUploadId] = useState<string | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setLoading(false)
+      }
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setProfile(null)
+        setLoading(false)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching profile:', error)
+      } else if (data) {
+        setProfile(data as Profile)
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setProfile(null)
+    setActiveTab('overview')
+  }
 
   const handleReviewUpload = (uploadId: string) => {
     setSelectedUploadId(uploadId)
     setActiveTab('review')
   }
+
+  // Show login if not authenticated
+  if (!loading && !user) {
+    return <Login onLoginSuccess={() => {}} />
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Define role-based tab access
+  const getAccessibleTabs = () => {
+    if (!profile) return []
+    
+    const allTabs = [
+      { id: 'overview', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'upload', roles: ['patwari', 'tehsildar', 'admin'] },
+      { id: 'queue', roles: ['tehsildar', 'admin'] },
+      { id: 'analytics', roles: ['tehsildar', 'admin'] },
+      { id: 'assistant', roles: ['tehsildar', 'admin'] },
+      { id: 'schema', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'rls', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'roles', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'tests', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+    ]
+
+    return allTabs
+      .filter(tab => tab.roles.includes(profile.role))
+      .map(tab => tab.id)
+  }
+
+  // Reset activeTab if user doesn't have access to current tab
+  useEffect(() => {
+    if (profile) {
+      const accessibleTabs = getAccessibleTabs()
+      if (!accessibleTabs.includes(activeTab)) {
+        setActiveTab('overview')
+      }
+    }
+  }, [profile, activeTab])
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -32,7 +138,22 @@ export default function App() {
                 <p className="text-xs text-slate-500">PS 26018 — Phase 6: Analytics & AI Assistant</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {profile && (
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-slate-900">{profile.name}</p>
+                    <p className="text-xs text-slate-500 capitalize">{profile.role}</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
                 Phase 6 Complete
               </span>
@@ -46,32 +167,34 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex gap-1">
             {[
-              { id: 'overview', label: 'Overview', icon: FileText },
-              { id: 'upload', label: 'Upload', icon: Upload },
-              { id: 'queue', label: 'Admin Queue', icon: ListChecks },
-              { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-              { id: 'assistant', label: 'AI Assistant', icon: MessageSquare },
-              { id: 'schema', label: 'Database Schema', icon: Database },
-              { id: 'rls', label: 'RLS Policies', icon: Shield },
-              { id: 'roles', label: 'Role Model', icon: Users },
-              { id: 'tests', label: 'RLS Tests', icon: CheckCircle2 },
-            ].map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as Tab)}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              )
-            })}
+              { id: 'overview', label: 'Overview', icon: FileText, roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+              { id: 'upload', label: 'Upload', icon: Upload, roles: ['patwari', 'tehsildar', 'admin'] },
+              { id: 'queue', label: 'Admin Queue', icon: ListChecks, roles: ['tehsildar', 'admin'] },
+              { id: 'analytics', label: 'Analytics', icon: BarChart3, roles: ['tehsildar', 'admin'] },
+              { id: 'assistant', label: 'AI Assistant', icon: MessageSquare, roles: ['tehsildar', 'admin'] },
+              { id: 'schema', label: 'Database Schema', icon: Database, roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+              { id: 'rls', label: 'RLS Policies', icon: Shield, roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+              { id: 'roles', label: 'Role Model', icon: Users, roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+              { id: 'tests', label: 'RLS Tests', icon: CheckCircle2, roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+            ]
+              .filter((tab) => profile && tab.roles.includes(profile.role))
+              .map((tab) => {
+                const Icon = tab.icon
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as Tab)}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-blue-600 text-blue-600'
+                        : 'border-transparent text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                )
+              })}
           </div>
         </div>
       </nav>

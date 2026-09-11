@@ -29,9 +29,9 @@ export interface UploadRow {
   uploader_id: string
   record_id: string | null
   status: UploadStatus
-  ocr_confidence: Record<string, number> | null
+  ocr_confidence: { [key: string]: number } | null
   tamper_score: number | null
-  tamper_details: Record<string, any> | null
+  tamper_details: { [key: string]: any } | null
   checksum: string
   device_fingerprint: string | null
   claimed_by: string | null
