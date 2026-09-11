@@ -1,37 +1,45 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase/client'
-import { LogIn, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react'
+import { UserPlus, Mail, Lock, User, AlertCircle, Loader2, CheckCircle } from 'lucide-react'
 
-interface LoginProps {
-  onLoginSuccess: () => void
-  onSwitchToSignup: () => void
-  onSwitchToOTP: () => void
+interface SignupProps {
+  onSignupSuccess: () => void
+  onSwitchToLogin: () => void
 }
 
-export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToOTP }: LoginProps) {
+export default function Signup({ onSignupSuccess, onSwitchToLogin }: SignupProps) {
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showEmailVerification, setShowEmailVerification] = useState(false)
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
-      const {  error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name,
+            role: 'public', // Default role, can be changed by admin later
+          },
+        },
       })
 
       if (error) {
-        // Show the actual Supabase error message
         setError(error.message)
         return
       }
 
-      onLoginSuccess()
+      // Supabase sends confirmation email by default
+      // Show verification message
+      setShowEmailVerification(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
@@ -39,8 +47,39 @@ export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToOTP 
     }
   }
 
-  const handlePhoneOTP = () => {
-    onSwitchToOTP()
+  if (showEmailVerification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Check Your Email</h2>
+          <p className="text-slate-600 mb-6">
+            We've sent a confirmation link to <strong>{email}</strong>. 
+            Please click the link in the email to verify your account.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800">
+              <strong>Didn't receive the email?</strong> Check your spam folder or{' '}
+              <button
+                onClick={() => setShowEmailVerification(false)}
+                className="text-blue-600 hover:text-blue-700 font-medium underline"
+              >
+                try again
+              </button>
+            </p>
+          </div>
+          <button
+            onClick={onSwitchToLogin}
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 flex items-center justify-center gap-2 transition-all"
+          >
+            <Mail className="w-5 h-5" />
+            Go to Login
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -48,10 +87,10 @@ export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToOTP 
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <LogIn className="w-8 h-8 text-white" />
+            <UserPlus className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-          <p className="text-slate-600">Sign in to Land Record Platform</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Create Account</h1>
+          <p className="text-slate-600">Join Land Record Platform</p>
         </div>
 
         {error && (
@@ -59,14 +98,32 @@ export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToOTP 
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-900">Login Failed</p>
+                <p className="text-sm font-medium text-red-900">Signup Failed</p>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
             </div>
           </div>
         )}
 
-        <form onSubmit={handleEmailLogin} className="space-y-5">
+        <form onSubmit={handleSignup} className="space-y-5">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
+              Full Name
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="John Doe"
+              />
+            </div>
+          </div>
+
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
               Email Address
@@ -97,10 +154,12 @@ export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToOTP 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="••••••••"
               />
             </div>
+            <p className="text-xs text-slate-500 mt-1">Minimum 6 characters</p>
           </div>
 
           <button
@@ -111,46 +170,25 @@ export default function Login({ onLoginSuccess, onSwitchToSignup, onSwitchToOTP 
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Signing in...
+                Creating account...
               </>
             ) : (
               <>
-                <LogIn className="w-5 h-5" />
-                Sign In with Email
+                <UserPlus className="w-5 h-5" />
+                Create Account
               </>
             )}
           </button>
         </form>
 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-slate-500">Or</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handlePhoneOTP}
-            className="mt-4 w-full bg-white border-2 border-slate-300 text-slate-700 py-3 rounded-lg font-medium hover:bg-slate-50 hover:border-slate-400 flex items-center justify-center gap-2 transition-all"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            Sign In with Phone OTP
-          </button>
-        </div>
-
         <div className="mt-6 text-center">
           <p className="text-slate-600">
-            Don't have an account?{' '}
+            Already have an account?{' '}
             <button
-              onClick={onSwitchToSignup}
+              onClick={onSwitchToLogin}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              Sign up
+              Sign in
             </button>
           </p>
         </div>

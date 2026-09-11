@@ -3,6 +3,8 @@ import { Database, Shield, FileText, Users, AlertTriangle, CheckCircle2, Upload,
 import { supabase } from './lib/supabase/client'
 import type { Profile } from './types/supabase'
 import Login from './components/Login'
+import Signup from './components/Signup'
+import PhoneOTP from './components/PhoneOTP'
 import UploadPage from './pages/UploadPage'
 import QueuePage from './pages/QueuePage'
 import ReviewPage from './pages/ReviewPage'
@@ -17,6 +19,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [authScreen, setAuthScreen] = useState<'login' | 'signup' | 'otp'>('login')
 
   useEffect(() => {
     // Get initial session
@@ -75,9 +78,21 @@ export default function App() {
     setActiveTab('review')
   }
 
-  // Show login if not authenticated
+  // Show auth screens if not authenticated
   if (!loading && !user) {
-    return <Login onLoginSuccess={() => {}} />
+    if (authScreen === 'signup') {
+      return <Signup onSignupSuccess={() => {}} onSwitchToLogin={() => setAuthScreen('login')} />
+    }
+    if (authScreen === 'otp') {
+      return <PhoneOTP onLoginSuccess={() => {}} onBack={() => setAuthScreen('login')} />
+    }
+    return (
+      <Login 
+        onLoginSuccess={() => {}} 
+        onSwitchToSignup={() => setAuthScreen('signup')}
+        onSwitchToOTP={() => setAuthScreen('otp')}
+      />
+    )
   }
 
   // Show loading state
