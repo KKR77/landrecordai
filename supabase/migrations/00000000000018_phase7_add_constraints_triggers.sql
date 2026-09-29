@@ -95,4 +95,4 @@ CREATE TRIGGER check_quarantine_status_trigger
   FOR EACH ROW
   EXECUTE FUNCTION check_quarantine_status();
 
-COMMENT ON MIGRATION IS 'Phase 7 Bug Fix: Add missing foreign key constraints and triggers for data integrity';
+--'Phase 7 Bug Fix: Add missing foreign key constraints and triggers for data integrity';

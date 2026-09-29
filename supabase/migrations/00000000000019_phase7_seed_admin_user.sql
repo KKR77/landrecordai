@@ -112,4 +112,4 @@ SET
 -- JOIN public.profiles p ON u.id = p.id
 -- WHERE u.email = 'admin@demo.local';
 
-COMMENT ON MIGRATION IS 'Phase 7: Seed demo admin user (admin@demo.local / Admin123!)';
+--'Phase 7: Seed demo admin user (admin@demo.local / Admin123!)';

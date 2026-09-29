@@ -158,7 +158,7 @@ export default function UploadPage() {
         .insert({
           storage_path: storagePath,
           uploader_id: user.id,
-          status: 'pending',
+          status: 'uploading',
           checksum,
           file_size: file.size,
           mime_type: file.type,
@@ -178,8 +178,8 @@ export default function UploadPage() {
       setUploadState((prev) => ({
         ...prev,
         id: uploadRecord.id,
-        status: 'processing',
-        progress: 100,
+        status: 'uploading',
+        progress: 0,
       }))
     } catch (error) {
       console.error('Upload error:', error)
@@ -202,6 +202,8 @@ export default function UploadPage() {
         return <AlertCircle className="w-5 h-5 text-amber-500" />
       case 'failed':
         return <XCircle className="w-5 h-5 text-red-500" />
+      case 'uploaded':
+        return <FileText className="w-5 h-5 text-blue-500" />
       default:
         return <UploadIcon className="w-5 h-5 text-slate-400" />
     }
@@ -213,6 +215,8 @@ export default function UploadPage() {
         return 'Select a file to upload'
       case 'uploading':
         return 'Uploading to storage...'
+      case 'uploaded':
+        return 'Uploaded, waiting to process...'
       case 'processing':
         return 'Processing document (OCR + NER)...'
       case 'completed':
@@ -231,6 +235,8 @@ export default function UploadPage() {
       case 'uploading':
       case 'processing':
         return 'text-blue-600'
+      case 'uploaded':
+        return 'text-blue-500'
       case 'completed':
         return 'text-green-600'
       case 'admin_queue':

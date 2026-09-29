@@ -94,4 +94,4 @@ END $$;
 -- - locked_fields is excluded from the view
 -- - Defense-in-depth: both REVOKE and policy block access
 
-COMMENT ON MIGRATION IS 'Phase 7 Security Fix: Close anon access to unmasked records table';
+-- -'Phase 7 Security Fix: Close anon access to unmasked records table';

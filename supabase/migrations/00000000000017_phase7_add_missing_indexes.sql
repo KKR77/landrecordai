@@ -43,4 +43,4 @@ CREATE INDEX IF NOT EXISTS idx_notifications_channel ON public.notifications(cha
 -- Index on target for target-based queries
 CREATE INDEX IF NOT EXISTS idx_sync_log_target ON public.sync_log(target);
 
-COMMENT ON MIGRATION IS 'Phase 7 Bug Fix: Add missing database indexes for performance';
+--Phase 7 Bug Fix: Add missing database indexes for performance';

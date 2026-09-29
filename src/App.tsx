@@ -78,6 +78,38 @@ export default function App() {
     setActiveTab('review')
   }
 
+  // Define role-based tab access
+  const getAccessibleTabs = () => {
+    if (!profile) return []
+
+    const allTabs = [
+      { id: 'overview', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'upload', roles: ['patwari', 'tehsildar', 'admin'] },
+      { id: 'queue', roles: ['tehsildar', 'admin'] },
+      { id: 'analytics', roles: ['tehsildar', 'admin'] },
+      { id: 'assistant', roles: ['tehsildar', 'admin'] },
+      { id: 'schema', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'rls', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'roles', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+      { id: 'tests', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
+    ]
+
+    return allTabs
+      .filter(tab => tab.roles.includes(profile.role))
+      .map(tab => tab.id)
+  }
+
+  // Reset activeTab if user doesn't have access to current tab
+  // (Moved above the early returns below — hooks must run unconditionally on every render)
+  useEffect(() => {
+    if (profile) {
+      const accessibleTabs = getAccessibleTabs()
+      if (!accessibleTabs.includes(activeTab)) {
+        setActiveTab('overview')
+      }
+    }
+  }, [profile, activeTab])
+
   // Show auth screens if not authenticated
   if (!loading && !user) {
     if (authScreen === 'signup') {
@@ -106,37 +138,6 @@ export default function App() {
       </div>
     )
   }
-
-  // Define role-based tab access
-  const getAccessibleTabs = () => {
-    if (!profile) return []
-    
-    const allTabs = [
-      { id: 'overview', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
-      { id: 'upload', roles: ['patwari', 'tehsildar', 'admin'] },
-      { id: 'queue', roles: ['tehsildar', 'admin'] },
-      { id: 'analytics', roles: ['tehsildar', 'admin'] },
-      { id: 'assistant', roles: ['tehsildar', 'admin'] },
-      { id: 'schema', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
-      { id: 'rls', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
-      { id: 'roles', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
-      { id: 'tests', roles: ['public', 'patwari', 'tehsildar', 'admin'] },
-    ]
-
-    return allTabs
-      .filter(tab => tab.roles.includes(profile.role))
-      .map(tab => tab.id)
-  }
-
-  // Reset activeTab if user doesn't have access to current tab
-  useEffect(() => {
-    if (profile) {
-      const accessibleTabs = getAccessibleTabs()
-      if (!accessibleTabs.includes(activeTab)) {
-        setActiveTab('overview')
-      }
-    }
-  }, [profile, activeTab])
 
   return (
     <div className="min-h-screen bg-slate-50">
